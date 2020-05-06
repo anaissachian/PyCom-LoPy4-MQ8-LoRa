@@ -8,6 +8,7 @@ from CayenneLPP import CayenneLPP
 from pytrack import Pytrack
 from pycoproc import Pycoproc
 from mq import MQ
+from time import sleep
 
 # Disable heartbeat LED
 pycom.heartbeat(False)
@@ -22,7 +23,23 @@ app_key = binascii.unhexlify('C5010C0BA838A56930E77655A7FCADE7')
 print("DevEUI: %s" % (binascii.hexlify(lora.mac())))
 print("AppEUI: %s" % (binascii.hexlify(app_eui)))
 print("AppKey: %s" % (binascii.hexlify(app_key)))
+# Increment index used to scan each point from vector sensors_data
+def inc(index, vector):
+    if index < len(vector)-1:
+        return index+1
+    else:
+        return 0
 
+# Define your thread's behaviour, here it's a loop sending sensors data every 5 seconds
+def send_env_data():
+    idx = 0
+    sensors_data = [0, -0.2, -0.5, -0.7, -0.8, -0.9, -0.9, -0.9, -0.8, -0.6, -0.4, -0.2, 0, 0.3, 0.5, 0.7, 0.8, 0.9, 0.9, 0.9, 0.8, 0.6, 0.4, 0.1]
+
+    while True:
+        # send one element from array `sensors_data` as signal 1
+        pybytes.send_signal(1, sensors_data[idx])
+        idx = inc(idx, sensors_data)
+        sleep(5)
 # join a network using OTAA (Over the Air Activation)
 # join a network using OTAA (Over the Air Activation)
 lora.join(activation=LoRa.OTAA, auth=(app_eui, app_key), timeout=0)
@@ -43,13 +60,12 @@ s = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
 
 # set the LoRaWAN data rate
 s.setsockopt(socket.SOL_LORA, socket.SO_DR, 5)
+
 mq2 = MQ('P15')
 while True:
     s.setblocking(True)
     pycom.rgbled(0x000014)
     lpp = CayenneLPP()
-
-
     print('\n\n** Mq8 Gas Sensor ppm value')
     value = mq2.MQRead()
     print('mq2_gas_ value', value)
